@@ -86,7 +86,11 @@
                 <Button x:Name="BookmarkBtn" Click="BookmarkHere_Click"
                         Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
                         ToolTipService.ToolTip="Bookmark current spot (Ctrl+D)">
-                    <FontIcon x:Name="BookmarkBtnIcon" Glyph="&#xE8A4;" FontSize="14" />
+                    <Path x:Name="BookmarkBtnIcon"
+                          Data="M0,0 L16,0 L16,22 L8,16 L0,22 Z"
+                          Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                          Stretch="Uniform"
+                          Width="11" Height="15" />
                 </Button>
                 <Button x:Name="InspectorBtn" Click="ToggleInspector_Click"
                         Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
@@ -204,6 +208,13 @@
                               ItemsSource="{x:Bind ViewModel.History.Entries, Mode=OneWay}"
                               SelectedItem="{x:Bind ViewModel.SelectedEntry, Mode=TwoWay}"
                               Visibility="{x:Bind local:BindHelpers.VisInverse(ViewModel.GlobalSearchVisible), Mode=OneWay}">
+                        <ListView.ItemContainerTransitions>
+                            <TransitionCollection>
+                                <AddDeleteThemeTransition />
+                                <ContentThemeTransition />
+                                <ReorderThemeTransition />
+                            </TransitionCollection>
+                        </ListView.ItemContainerTransitions>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="services:HistoryEntry">
                                 <StackPanel Padding="6,4">
@@ -225,6 +236,12 @@
                               ItemClick="GlobalSearchList_ItemClick"
                               ItemsSource="{x:Bind ViewModel.GlobalSearchHits, Mode=OneWay}"
                               Visibility="{x:Bind local:BindHelpers.Vis(ViewModel.GlobalSearchVisible), Mode=OneWay}">
+                        <ListView.ItemContainerTransitions>
+                            <TransitionCollection>
+                                <AddDeleteThemeTransition />
+                                <EntranceThemeTransition />
+                            </TransitionCollection>
+                        </ListView.ItemContainerTransitions>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="services:SearchHit">
                                 <StackPanel Padding="6,6">
@@ -257,7 +274,11 @@
                         BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                         BorderThickness="1"
                         IsHitTestVisible="False"
-                        Visibility="{x:Bind local:BindHelpers.Vis(ViewModel.ZoomHudVisible), Mode=OneWay}">
+                        Opacity="0"
+                        Visibility="Collapsed">
+                    <Border.RenderTransform>
+                        <CompositeTransform x:Name="ZoomHudTransform" />
+                    </Border.RenderTransform>
                     <TextBlock Text="{x:Bind ViewModel.ZoomHudText, Mode=OneWay}"
                                FontSize="36" FontWeight="SemiBold" />
                 </Border>
@@ -271,7 +292,11 @@
                         BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                         BorderThickness="1"
                         MaxWidth="420"
+                        Opacity="0"
                         Visibility="Collapsed">
+                    <Border.RenderTransform>
+                        <CompositeTransform x:Name="FindBarTransform" />
+                    </Border.RenderTransform>
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE721;" FontSize="12" VerticalAlignment="Center" Opacity="0.6" />
                         <TextBox x:Name="FindBox"
@@ -326,10 +351,19 @@
                           ItemsSource="{x:Bind ViewModel.TocHeadings, Mode=OneWay}"
                           SelectionMode="Single"
                           SelectionChanged="TocList_SelectionChanged">
+                    <ListView.ItemContainerTransitions>
+                        <TransitionCollection>
+                            <AddDeleteThemeTransition />
+                            <EntranceThemeTransition />
+                        </TransitionCollection>
+                    </ListView.ItemContainerTransitions>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="services:TocHeading">
                             <TextBlock Text="{x:Bind Text}"
-                                       FontSize="12"
+                                       Margin="{x:Bind local:TocVisuals.Indent(Level)}"
+                                       FontSize="{x:Bind local:TocVisuals.LevelFontSize(Level)}"
+                                       FontWeight="{x:Bind local:TocVisuals.Weight(Level)}"
+                                       Opacity="{x:Bind local:TocVisuals.LevelOpacity(Level)}"
                                        TextWrapping="WrapWholeWords" />
                         </DataTemplate>
                     </ListView.ItemTemplate>
@@ -344,11 +378,24 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0"
-                               Text="BOOKMARKS"
-                               Margin="14,12,14,6"
-                               FontSize="11" FontWeight="SemiBold"
-                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <Grid Grid.Row="0" Margin="14,12,14,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Path Grid.Column="0"
+                              Data="M0,0 L16,0 L16,22 L8,16 L0,22 Z"
+                              Fill="{ThemeResource TextFillColorTertiaryBrush}"
+                              Stretch="Uniform"
+                              Width="8" Height="11"
+                              VerticalAlignment="Center"
+                              Margin="0,0,6,0" />
+                        <TextBlock Grid.Column="1"
+                                   Text="BOOKMARKS"
+                                   FontSize="11" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    </Grid>
                     <Grid Grid.Row="1">
                         <TextBlock x:Name="BookmarksEmpty"
                                    Text="No bookmarks. Press Ctrl+D at a spot in any file."
@@ -364,20 +411,30 @@
                                   CanReorderItems="True"
                                   AllowDrop="True"
                                   ItemsSource="{x:Bind ViewModel.Bookmarks.Bookmarks, Mode=OneWay}">
+                            <ListView.ItemContainerTransitions>
+                                <TransitionCollection>
+                                    <AddDeleteThemeTransition />
+                                    <ContentThemeTransition />
+                                    <ReorderThemeTransition />
+                                </TransitionCollection>
+                            </ListView.ItemContainerTransitions>
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="services:Bookmark">
                                     <Grid Padding="4,4" Opacity="{x:Bind local:BookmarkVisuals.Opacity(FileExists), Mode=OneWay}">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="22" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <FontIcon Grid.Column="0"
-                                                  Glyph="{x:Bind local:BookmarkVisuals.Icon(FileExists), Mode=OneWay}"
-                                                  FontSize="12"
+                                        <FontIcon FontFamily="Segoe MDL2 Assets"
+                                                  Glyph="&#xE7BA;"
+                                                  FontSize="11"
+                                                  HorizontalAlignment="Left"
                                                   VerticalAlignment="Top"
-                                                  Margin="0,2,0,0" />
-                                        <StackPanel Grid.Column="1">
+                                                  Margin="0,2,4,0"
+                                                  Foreground="{x:Bind local:BookmarkVisuals.IconBrush(FileExists), Mode=OneWay}"
+                                                  Visibility="{x:Bind local:BookmarkVisuals.VisIfMissing(FileExists), Mode=OneWay}"
+                                                  Grid.Column="0" />
+                                        <StackPanel Grid.Column="0">
                                             <TextBlock Text="{x:Bind local:TextHelpers.MiddleEllipsis(Title, 28), Mode=OneWay}"
                                                        FontSize="13"
                                                        TextWrapping="NoWrap" />
@@ -386,7 +443,7 @@
                                                        Opacity="0.6"
                                                        TextWrapping="NoWrap" />
                                         </StackPanel>
-                                        <Border Grid.Column="2"
+                                        <Border Grid.Column="1"
                                                 Visibility="{x:Bind local:BookmarkVisuals.SlotVis(Slot), Mode=OneWay}"
                                                 Background="{ThemeResource AccentFillColorDefaultBrush}"
                                                 CornerRadius="3"

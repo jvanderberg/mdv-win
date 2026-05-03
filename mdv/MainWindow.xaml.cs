@@ -73,13 +73,6 @@ public sealed partial class MainWindow : Window
                     break;
                 case nameof(MainViewModel.RawMarkdown):
                     RenderDocument();
-                    var anchor = ViewModel.ConsumePendingScrollAnchor();
-                    if (anchor.HasValue)
-                    {
-                        var resolved = BookmarkAnchor.Resolve(_blockSources, anchor.Value.Index, anchor.Value.Fingerprint);
-                        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-                            () => ScrollToBlock(resolved));
-                    }
                     break;
             }
         };
@@ -96,6 +89,8 @@ public sealed partial class MainWindow : Window
             }
         };
         ViewModel.BlockScrollRequested += ScrollToBlock;
+        ViewModel.ZoomHudShowRequested += () => Tween.FadeScaleIn(ZoomHud, ZoomHudTransform);
+        ViewModel.ZoomHudHideRequested += () => Tween.FadeScaleOut(ZoomHud, ZoomHudTransform);
     }
 
     private void RegisterOemAccelerators()
@@ -268,7 +263,22 @@ public sealed partial class MainWindow : Window
                 loadRemote);
 
             _blockSources = DocumentBlocks.Split(ViewModel.RawMarkdown);
-            var html = renderer.Render(ViewModel.RawMarkdown);
+
+            // Resolve any pending bookmark/placeholder anchor against the
+            // freshly-populated block list, then bake the resolved index
+            // into the HTML so the page's DOMContentLoaded handler scrolls
+            // straight to it. Doing it here (rather than in a separate
+            // PropertyChanged tick) avoids the race where _blockSources
+            // was empty during anchor resolution.
+            int? initialScrollBlock = null;
+            var anchor = ViewModel.ConsumePendingScrollAnchor();
+            if (anchor.HasValue && _blockSources.Count > 0)
+            {
+                initialScrollBlock = BookmarkAnchor.Resolve(
+                    _blockSources, anchor.Value.Index, anchor.Value.Fingerprint);
+            }
+
+            var html = renderer.Render(ViewModel.RawMarkdown, initialScrollBlock);
             DocumentWebView.NavigateToString(html);
         }
         catch { }
@@ -383,12 +393,27 @@ public sealed partial class MainWindow : Window
         AppTitleBar.Background = new SolidColorBrush(theme.Background);
         AppTitleText.Foreground = new SolidColorBrush(theme.Text);
         RootGrid.RequestedTheme = theme.IsDark ? ElementTheme.Dark : ElementTheme.Light;
+        // Match the WebView2's "no content yet" backdrop to the theme so the
+        // brief unload-to-load transition (NavigateToString) doesn't flash
+        // white. DefaultBackgroundColor is on the control, not CoreWebView2.
+        DocumentWebView.DefaultBackgroundColor = theme.Background;
     }
+
+    private bool _layoutInitialized;
 
     private void ApplyLayoutFromViewModel()
     {
-        SidebarColumn.Width = ViewModel.SidebarCollapsed ? new GridLength(0) : new GridLength(240);
-        InspectorColumn.Width = ViewModel.InspectorVisible ? new GridLength(240) : new GridLength(0);
+        var sidebarTo = ViewModel.SidebarCollapsed ? 0.0 : 240.0;
+        var inspectorTo = ViewModel.InspectorVisible ? 240.0 : 0.0;
+        if (!_layoutInitialized)
+        {
+            SidebarColumn.Width = new GridLength(sidebarTo);
+            InspectorColumn.Width = new GridLength(inspectorTo);
+            _layoutInitialized = true;
+            return;
+        }
+        Tween.Column(SidebarColumn, sidebarTo, System.TimeSpan.FromMilliseconds(220));
+        Tween.Column(InspectorColumn, inspectorTo, System.TimeSpan.FromMilliseconds(220));
     }
 
     // MARK: - Toolbar button handlers
@@ -486,9 +511,9 @@ public sealed partial class MainWindow : Window
 
     private void UpdateBookmarkButton()
     {
-        var has = ViewModel.Bookmarks.HasAnyBookmarkForPath(ViewModel.SelectedEntry?.Path);
-        // E8A4 = Bookmark, EB8F = SolidStar (filled bookmark not in standard set; use Pinned EB52)
-        BookmarkBtnIcon.Glyph = has ? "" : "";
+        // No state-driven color flip: the button always renders with the
+        // primary text color, like every other toolbar icon.
+        BookmarkBtnIcon.Fill = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
     }
 
     private static Bookmark? BookmarkOf(object sender) =>
@@ -549,7 +574,7 @@ public sealed partial class MainWindow : Window
 
     private void OpenFindBar()
     {
-        FindBar.Visibility = Visibility.Visible;
+        Tween.FadeSlideIn(FindBar, FindBarTransform);
         DispatcherQueue.TryEnqueue(() => FindBox.Focus(FocusState.Keyboard));
     }
 
@@ -559,7 +584,7 @@ public sealed partial class MainWindow : Window
     {
         FindBox.Text = "";
         ClearFindHighlights();
-        FindBar.Visibility = Visibility.Collapsed;
+        Tween.FadeSlideOut(FindBar, FindBarTransform);
     }
 
     private void FindBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateFindMatches();

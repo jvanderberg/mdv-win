@@ -301,7 +301,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var pct = (int)Math.Round(Themes.FontScale * 100);
         ZoomHudText = $"{pct}%";
-        ZoomHudVisible = true;
+        ZoomHudShowRequested?.Invoke();
         _lastZoomChange = DateTime.UtcNow;
         var stamp = _lastZoomChange;
         var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
@@ -311,8 +311,11 @@ public sealed partial class MainViewModel : ObservableObject
             if (stamp != _lastZoomChange) return;
             dispatcher?.TryEnqueue(() =>
             {
-                if (stamp == _lastZoomChange) ZoomHudVisible = false;
+                if (stamp == _lastZoomChange) ZoomHudHideRequested?.Invoke();
             });
         });
     }
+
+    public event Action? ZoomHudShowRequested;
+    public event Action? ZoomHudHideRequested;
 }

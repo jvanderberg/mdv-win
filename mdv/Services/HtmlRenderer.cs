@@ -38,7 +38,9 @@ public sealed class HtmlRenderer
     /// in `<div class="block" id="block-N">…</div>` so the host can scroll to
     /// a specific block (TOC click, bookmark jump) and tint matched blocks
     /// during find.
-    public string Render(string source)
+    public string Render(string source) => Render(source, null);
+
+    public string Render(string source, int? initialScrollBlock)
     {
         // Split first, then smarten per-block — skipping fenced code blocks
         // and pipe-table blocks where `--` and `|` are syntactic.
@@ -60,7 +62,7 @@ public sealed class HtmlRenderer
             sb.Append($"<div class=\"block\" id=\"block-{i}\">").Append(html).Append("</div>");
         }
 
-        sb.Append("</div><script>").Append(BuildJs()).Append("</script></body></html>");
+        sb.Append("</div><script>").Append(BuildJs(initialScrollBlock)).Append("</script></body></html>");
         return sb.ToString();
     }
 
@@ -184,9 +186,9 @@ table {{
   border-collapse: collapse;
   border: 1px solid var(--border);
   border-radius: 4px;
-  overflow: hidden;
   margin: 0 0 16px;
   display: block;
+  width: max-content;
   max-width: 100%;
   overflow-x: auto;
 }}
@@ -211,10 +213,20 @@ input[type=checkbox] {{ accent-color: var(--accent); margin-right: 6px; }}
 ";
     }
 
-    private string BuildJs() => @"
+    private string BuildJs(int? initialScrollBlock) => $@"
+window.mdvInitialScrollBlock = {(initialScrollBlock.HasValue ? initialScrollBlock.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null")};
+document.addEventListener('DOMContentLoaded', function() {{
+  if (window.mdvInitialScrollBlock !== null && window.mdvInitialScrollBlock >= 0) {{
+    requestAnimationFrame(function() {{
+      var el = document.getElementById('block-' + window.mdvInitialScrollBlock);
+      if (el) el.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+    }});
+  }}
+}});
+" + @"
 window.mdvScrollToBlock = function(idx) {
   var el = document.getElementById('block-' + idx);
-  if (el) el.scrollIntoView({ behavior: 'auto', block: 'start' });
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 document.addEventListener('keydown', function(e) {
   // Zoom: handle =/+ /- and numpad +/- regardless of shift state, via physical key codes.
@@ -266,7 +278,7 @@ window.mdvFind = function(query) {
 window.mdvFindCurrent = function(blockIdx) {
   document.querySelectorAll('.block.find-current').forEach(function(b) { b.classList.remove('find-current'); });
   var el = document.getElementById('block-' + blockIdx);
-  if (el) { el.classList.add('find-current'); el.scrollIntoView({ behavior: 'auto', block: 'center' }); }
+  if (el) { el.classList.add('find-current'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 };
 window.mdvFindClear = function() {
   document.querySelectorAll('.find-match,.find-current').forEach(function(b) {

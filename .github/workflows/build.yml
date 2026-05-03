@@ -1,0 +1,82 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore mdv\mdv.csproj -r win-x64
+
+      - name: Build
+        run: dotnet build mdv\mdv.csproj -c Release -r win-x64 --no-restore
+
+      - name: Publish (self-contained)
+        run: |
+          dotnet publish mdv\mdv.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:WindowsAppSDKSelfContained=true `
+            -p:PublishReadyToRun=true `
+            -o publish\mdv-win-x64
+        shell: pwsh
+
+      - name: Package zip
+        run: |
+          $version = if ($env:GITHUB_REF -match '^refs/tags/v(.+)$') { $matches[1] } else { (git rev-parse --short HEAD) }
+          $zipName = "mdv-win-x64-$version.zip"
+          Compress-Archive -Path publish\mdv-win-x64\* -DestinationPath $zipName
+          echo "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdv-win-x64
+          path: ${{ env.ZIP_NAME }}
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
+          generate_release_notes: true
+          body: |
+            **Windows port of mdv** — drop-in Markdown viewer, themed via WebView2.
+
+            ## Install
+            1. Download `${{ env.ZIP_NAME }}` below.
+            2. Extract anywhere.
+            3. Run `mdv.exe`. Pass a `.md` file or directory as an argument:
+               ```
+               mdv.exe path\to\file.md
+               mdv.exe path\to\directory
+               ```
+
+            ## Requirements
+            - Windows 10 1809+ / Windows 11 (x64)
+            - **WebView2 Runtime** — usually pre-installed on Windows 11. If missing:
+              `winget install Microsoft.EdgeWebView2Runtime`
+            - .NET runtime is bundled (self-contained); no separate install needed.
+
+            See `README.md` for keyboard shortcuts.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

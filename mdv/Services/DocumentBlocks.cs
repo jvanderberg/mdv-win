@@ -66,7 +66,10 @@ public static class DocumentBlocks
 
             int level;
             string prefix;
-            if (trimmed.StartsWith("### ")) { level = 3; prefix = "### "; }
+            if (trimmed.StartsWith("###### ")) { level = 6; prefix = "###### "; }
+            else if (trimmed.StartsWith("##### ")) { level = 5; prefix = "##### "; }
+            else if (trimmed.StartsWith("#### ")) { level = 4; prefix = "#### "; }
+            else if (trimmed.StartsWith("### ")) { level = 3; prefix = "### "; }
             else if (trimmed.StartsWith("## ")) { level = 2; prefix = "## "; }
             else if (trimmed.StartsWith("# ")) { level = 1; prefix = "# "; }
             else continue;
