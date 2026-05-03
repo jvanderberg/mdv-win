@@ -1,0 +1,31 @@
+# .NET / VS / WinUI build output
+bin/
+obj/
+out/
+*.user
+*.suo
+.vs/
+.vscode/
+
+# MSIX packaging output
+AppPackages/
+BundleArtifacts/
+GeneratedArtifacts/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.msixupload
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Code-signing keys (never commit)
+*.pfx
+
+# Editor noise
+*.swp
+.DS_Store
+Thumbs.db

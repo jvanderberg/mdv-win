@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Mdv.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Mdv"
+    xmlns:services="using:Mdv.Services"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls">
+
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition x:Name="MenuRow" Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="O" Modifiers="Control" Invoked="Accel_OpenFile" />
+            <KeyboardAccelerator Key="O" Modifiers="Control,Shift" Invoked="Accel_OpenInNewWindow" />
+            <KeyboardAccelerator Key="E" Modifiers="Control" Invoked="Accel_EditCurrent" />
+            <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="Accel_Find" />
+            <KeyboardAccelerator Key="F" Modifiers="Control,Shift" Invoked="Accel_SearchHistory" />
+            <KeyboardAccelerator Key="B" Modifiers="Control" Invoked="Accel_ToggleSidebar" />
+            <KeyboardAccelerator Key="Number0" Modifiers="Control,Menu" Invoked="Accel_ToggleInspector" />
+            <KeyboardAccelerator Key="Add" Modifiers="Control" Invoked="Accel_ZoomIn" />
+            <KeyboardAccelerator Key="Subtract" Modifiers="Control" Invoked="Accel_ZoomOut" />
+            <KeyboardAccelerator Key="D" Modifiers="Control" Invoked="Accel_BookmarkHere" />
+            <KeyboardAccelerator Key="Number0" Modifiers="Control,Shift" Invoked="Accel_SetPlaceholder" />
+            <KeyboardAccelerator Key="Number0" Modifiers="Control" Invoked="Accel_JumpPlaceholder" />
+            <KeyboardAccelerator Key="Number1" Modifiers="Control" Invoked="Accel_Slot1" />
+            <KeyboardAccelerator Key="Number2" Modifiers="Control" Invoked="Accel_Slot2" />
+            <KeyboardAccelerator Key="Number3" Modifiers="Control" Invoked="Accel_Slot3" />
+            <KeyboardAccelerator Key="Number4" Modifiers="Control" Invoked="Accel_Slot4" />
+            <KeyboardAccelerator Key="Number5" Modifiers="Control" Invoked="Accel_Slot5" />
+            <KeyboardAccelerator Key="Left" Modifiers="Menu" Invoked="Accel_Back" />
+            <KeyboardAccelerator Key="Right" Modifiers="Menu" Invoked="Accel_Forward" />
+        </Grid.KeyboardAccelerators>
+
+        <!-- Custom title bar: filename on left, toolbar on right, system buttons reserved -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="RightInsetColumn" Width="148" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       x:Name="AppTitleText"
+                       VerticalAlignment="Center"
+                       Margin="14,0,0,0"
+                       FontSize="13" FontWeight="SemiBold"
+                       Text="mdv"
+                       TextTrimming="CharacterEllipsis"
+                       IsHitTestVisible="False" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Padding="0,4,8,4">
+                <Button x:Name="MenuBtn" Click="ToggleMenu_Click"
+                        Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
+                        ToolTipService.ToolTip="Show / hide menu bar">
+                    <FontIcon Glyph="&#xE700;" FontSize="14" />
+                </Button>
+                <Button x:Name="OpenFileBtn" Click="OpenFile_Click"
+                        Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
+                        ToolTipService.ToolTip="Open file (Ctrl+O)">
+                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                </Button>
+                <Button x:Name="EditBtn" Click="EditCurrent_Click"
+                        Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
+                        ToolTipService.ToolTip="Edit current file (Ctrl+E) — right-click to change editor">
+                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                    <Button.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="Choose Editor…" Click="ChooseEditor_Click" />
+                            <MenuFlyoutItem Text="Forget Editor" Click="ForgetEditor_Click" />
+                        </MenuFlyout>
+                    </Button.ContextFlyout>
+                </Button>
+                <Button x:Name="ThemeBtn"
+                        Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
+                        ToolTipService.ToolTip="Theme">
+                    <FontIcon Glyph="&#xE790;" FontSize="14" />
+                    <Button.Flyout>
+                        <MenuFlyout x:Name="ThemeFlyout" Placement="BottomEdgeAlignedRight" />
+                    </Button.Flyout>
+                </Button>
+                <Button x:Name="BookmarkBtn" Click="BookmarkHere_Click"
+                        Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
+                        ToolTipService.ToolTip="Bookmark current spot (Ctrl+D)">
+                    <FontIcon x:Name="BookmarkBtnIcon" Glyph="&#xE8A4;" FontSize="14" />
+                </Button>
+                <Button x:Name="InspectorBtn" Click="ToggleInspector_Click"
+                        Background="Transparent" BorderThickness="0" Padding="8,4" MinWidth="0"
+                        ToolTipService.ToolTip="Toggle inspector (Ctrl+Alt+0)">
+                    <FontIcon Glyph="&#xE90D;" FontSize="14" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <controls:MenuBar Grid.Row="1" x:Name="AppMenuBar" Visibility="Collapsed">
+            <controls:MenuBarItem Title="File">
+                <MenuFlyoutItem Text="Open…" Click="OpenFile_Click" KeyboardAcceleratorTextOverride="Ctrl+O" />
+                <MenuFlyoutItem Text="Open in New Window…" Click="MenuOpenInNewWindow_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+O" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Edit Current File" Click="EditCurrent_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
+                <MenuFlyoutItem Text="Choose Editor…" Click="ChooseEditor_Click" />
+                <MenuFlyoutItem Text="Forget Editor" Click="ForgetEditor_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Exit" Click="MenuExit_Click" />
+            </controls:MenuBarItem>
+            <controls:MenuBarItem Title="Edit">
+                <MenuFlyoutItem Text="Find…" Click="MenuFind_Click" KeyboardAcceleratorTextOverride="Ctrl+F" />
+                <MenuFlyoutItem Text="Search History…" Click="OpenSidebarSearch_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F" />
+            </controls:MenuBarItem>
+            <controls:MenuBarItem Title="View">
+                <MenuFlyoutItem Text="Toggle Sidebar" Click="MenuToggleSidebar_Click" KeyboardAcceleratorTextOverride="Ctrl+B" />
+                <MenuFlyoutItem Text="Toggle Inspector" Click="ToggleInspector_Click" KeyboardAcceleratorTextOverride="Ctrl+Alt+0" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Zoom In" Click="MenuZoomIn_Click" KeyboardAcceleratorTextOverride="Ctrl++" />
+                <MenuFlyoutItem Text="Zoom Out" Click="MenuZoomOut_Click" KeyboardAcceleratorTextOverride="Ctrl+-" />
+                <MenuFlyoutItem Text="Actual Size" Click="MenuResetZoom_Click" />
+                <MenuFlyoutSeparator />
+                <ToggleMenuFlyoutItem x:Name="MenuSmartTypoToggle" Text="Smart Typography" Click="MenuSmartTypo_Click" />
+                <ToggleMenuFlyoutItem x:Name="MenuRemoteImagesToggle" Text="Load Remote Images" Click="MenuRemoteImages_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutSubItem x:Name="MenuThemeSubItem" Text="Theme">
+                    <MenuFlyoutItem Text="System" Click="MenuPickSystemTheme_Click" />
+                    <MenuFlyoutSeparator />
+                </MenuFlyoutSubItem>
+            </controls:MenuBarItem>
+            <controls:MenuBarItem Title="Navigate">
+                <MenuFlyoutItem Text="Back" Click="MenuBack_Click" KeyboardAcceleratorTextOverride="Alt+←" />
+                <MenuFlyoutItem Text="Forward" Click="MenuForward_Click" KeyboardAcceleratorTextOverride="Alt+→" />
+            </controls:MenuBarItem>
+            <controls:MenuBarItem Title="Bookmarks">
+                <MenuFlyoutItem Text="Bookmark Current Spot" Click="BookmarkHere_Click" KeyboardAcceleratorTextOverride="Ctrl+D" />
+                <MenuFlyoutItem Text="Set Placeholder" Click="MenuSetPlaceholder_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+0" />
+                <MenuFlyoutItem Text="Jump to Placeholder" Click="MenuJumpPlaceholder_Click" KeyboardAcceleratorTextOverride="Ctrl+0" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuSlot1" Text="1. Empty" Click="MenuSlot1_Click" KeyboardAcceleratorTextOverride="Ctrl+1" />
+                <MenuFlyoutItem x:Name="MenuSlot2" Text="2. Empty" Click="MenuSlot2_Click" KeyboardAcceleratorTextOverride="Ctrl+2" />
+                <MenuFlyoutItem x:Name="MenuSlot3" Text="3. Empty" Click="MenuSlot3_Click" KeyboardAcceleratorTextOverride="Ctrl+3" />
+                <MenuFlyoutItem x:Name="MenuSlot4" Text="4. Empty" Click="MenuSlot4_Click" KeyboardAcceleratorTextOverride="Ctrl+4" />
+                <MenuFlyoutItem x:Name="MenuSlot5" Text="5. Empty" Click="MenuSlot5_Click" KeyboardAcceleratorTextOverride="Ctrl+5" />
+            </controls:MenuBarItem>
+        </controls:MenuBar>
+
+        <!-- Three-pane content -->
+        <Grid Grid.Row="2" x:Name="ContentGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="SidebarColumn" Width="240" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="InspectorColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <!-- History sidebar -->
+            <Grid Grid.Column="0" x:Name="SidebarPanel"
+                  Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Padding="14,14,10,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="HISTORY"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <Button Grid.Column="1"
+                            Padding="6,2" MinWidth="0"
+                            Background="Transparent" BorderThickness="0"
+                            Click="OpenSidebarSearch_Click"
+                            ToolTipService.ToolTip="Search history (Ctrl+Shift+F)"
+                            Visibility="{x:Bind local:BindHelpers.VisInverse(ViewModel.GlobalSearchVisible), Mode=OneWay}">
+                        <FontIcon Glyph="&#xE721;" FontSize="11" />
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="1" Padding="10,0,10,8"
+                      Visibility="{x:Bind local:BindHelpers.Vis(ViewModel.GlobalSearchVisible), Mode=OneWay}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             x:Name="GlobalSearchBox"
+                             PlaceholderText="Search history"
+                             Text="{x:Bind ViewModel.GlobalSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Grid.Column="1"
+                            Padding="6,2" MinWidth="0"
+                            Background="Transparent" BorderThickness="0"
+                            Click="CloseSidebarSearch_Click"
+                            ToolTipService.ToolTip="Close (Esc)">
+                        <FontIcon Glyph="&#xE894;" FontSize="11" />
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="2">
+                    <ListView x:Name="HistoryList"
+                              SelectionMode="Single"
+                              ItemsSource="{x:Bind ViewModel.History.Entries, Mode=OneWay}"
+                              SelectedItem="{x:Bind ViewModel.SelectedEntry, Mode=TwoWay}"
+                              Visibility="{x:Bind local:BindHelpers.VisInverse(ViewModel.GlobalSearchVisible), Mode=OneWay}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="services:HistoryEntry">
+                                <StackPanel Padding="6,4">
+                                    <TextBlock Text="{x:Bind local:TextHelpers.MiddleEllipsis(Filename, 28)}"
+                                               FontSize="13"
+                                               TextWrapping="NoWrap" />
+                                    <TextBlock Text="{x:Bind local:TextHelpers.MiddlePathEllipsis(Path, 32)}"
+                                               FontSize="11"
+                                               Opacity="0.6"
+                                               TextWrapping="NoWrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <ListView x:Name="GlobalSearchList"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="GlobalSearchList_ItemClick"
+                              ItemsSource="{x:Bind ViewModel.GlobalSearchHits, Mode=OneWay}"
+                              Visibility="{x:Bind local:BindHelpers.Vis(ViewModel.GlobalSearchVisible), Mode=OneWay}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="services:SearchHit">
+                                <StackPanel Padding="6,6">
+                                    <TextBlock Text="{x:Bind local:TextHelpers.MiddleEllipsis(Filename, 28)}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               TextWrapping="NoWrap" />
+                                    <TextBlock Text="{x:Bind Snippet}"
+                                               FontSize="11" Opacity="0.8"
+                                               TextWrapping="WrapWholeWords"
+                                               MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind local:TextHelpers.MiddlePathEllipsis(Path, 32)}"
+                                               FontSize="10" Opacity="0.55"
+                                               TextWrapping="NoWrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Grid>
+
+            <!-- Document view -->
+            <Grid Grid.Column="1" x:Name="DocumentPanel">
+                <controls:WebView2 x:Name="DocumentWebView" />
+
+                <!-- Zoom HUD overlay -->
+                <Border x:Name="ZoomHud"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="28,18" CornerRadius="14"
+                        Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        IsHitTestVisible="False"
+                        Visibility="{x:Bind local:BindHelpers.Vis(ViewModel.ZoomHudVisible), Mode=OneWay}">
+                    <TextBlock Text="{x:Bind ViewModel.ZoomHudText, Mode=OneWay}"
+                               FontSize="36" FontWeight="SemiBold" />
+                </Border>
+
+                <!-- Find bar overlay -->
+                <Border x:Name="FindBar"
+                        HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Margin="0,12,0,0" Padding="10,7"
+                        CornerRadius="8"
+                        Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        MaxWidth="420"
+                        Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE721;" FontSize="12" VerticalAlignment="Center" Opacity="0.6" />
+                        <TextBox x:Name="FindBox"
+                                 PlaceholderText="Find"
+                                 MinWidth="160"
+                                 VerticalAlignment="Center"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 TextChanged="FindBox_TextChanged"
+                                 KeyDown="FindBox_KeyDown" />
+                        <TextBlock x:Name="FindCounter"
+                                   FontSize="11" Opacity="0.65"
+                                   VerticalAlignment="Center" MinWidth="60" />
+                        <Button Click="FindPrev_Click" Background="Transparent" BorderThickness="0"
+                                Padding="6,2" MinWidth="0"
+                                ToolTipService.ToolTip="Previous (Shift+Enter)">
+                            <FontIcon Glyph="&#xE70E;" FontSize="11" />
+                        </Button>
+                        <Button Click="FindNext_Click" Background="Transparent" BorderThickness="0"
+                                Padding="6,2" MinWidth="0"
+                                ToolTipService.ToolTip="Next (Enter)">
+                            <FontIcon Glyph="&#xE70D;" FontSize="11" />
+                        </Button>
+                        <Button Click="FindClose_Click" Background="Transparent" BorderThickness="0"
+                                Padding="6,2" MinWidth="0"
+                                ToolTipService.ToolTip="Close (Esc)">
+                            <FontIcon Glyph="&#xE894;" FontSize="11" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Inspector: TOC + bookmarks -->
+            <Grid Grid.Column="2" x:Name="InspectorPanel"
+                  Background="{ThemeResource LayerFillColorDefaultBrush}"
+                  Visibility="{x:Bind local:BindHelpers.Vis(ViewModel.InspectorVisible), Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="240" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="ON THIS PAGE"
+                           Margin="14,14,14,6"
+                           FontSize="11" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                <ListView Grid.Row="1"
+                          x:Name="TocList"
+                          ItemsSource="{x:Bind ViewModel.TocHeadings, Mode=OneWay}"
+                          SelectionMode="Single"
+                          SelectionChanged="TocList_SelectionChanged">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="services:TocHeading">
+                            <TextBlock Text="{x:Bind Text}"
+                                       FontSize="12"
+                                       TextWrapping="WrapWholeWords" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <Border Grid.Row="2" Height="1"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        Margin="0,8,0,0" />
+
+                <Grid Grid.Row="3">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0"
+                               Text="BOOKMARKS"
+                               Margin="14,12,14,6"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <Grid Grid.Row="1">
+                        <TextBlock x:Name="BookmarksEmpty"
+                                   Text="No bookmarks. Press Ctrl+D at a spot in any file."
+                                   Padding="14,12"
+                                   FontSize="11"
+                                   Opacity="0.55"
+                                   TextWrapping="Wrap"
+                                   Visibility="Collapsed" />
+                        <ListView x:Name="BookmarksList"
+                                  SelectionMode="None"
+                                  IsItemClickEnabled="True"
+                                  ItemClick="BookmarksList_ItemClick"
+                                  CanReorderItems="True"
+                                  AllowDrop="True"
+                                  ItemsSource="{x:Bind ViewModel.Bookmarks.Bookmarks, Mode=OneWay}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="services:Bookmark">
+                                    <Grid Padding="4,4" Opacity="{x:Bind local:BookmarkVisuals.Opacity(FileExists), Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="22" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Grid.Column="0"
+                                                  Glyph="{x:Bind local:BookmarkVisuals.Icon(FileExists), Mode=OneWay}"
+                                                  FontSize="12"
+                                                  VerticalAlignment="Top"
+                                                  Margin="0,2,0,0" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{x:Bind local:TextHelpers.MiddleEllipsis(Title, 28), Mode=OneWay}"
+                                                       FontSize="13"
+                                                       TextWrapping="NoWrap" />
+                                            <TextBlock Text="{x:Bind local:BookmarkVisuals.FilenameOf(Path)}"
+                                                       FontSize="10"
+                                                       Opacity="0.6"
+                                                       TextWrapping="NoWrap" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2"
+                                                Visibility="{x:Bind local:BookmarkVisuals.SlotVis(Slot), Mode=OneWay}"
+                                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                                CornerRadius="3"
+                                                Padding="5,1"
+                                                VerticalAlignment="Top"
+                                                Margin="6,2,0,0">
+                                            <TextBlock Text="{x:Bind local:BookmarkVisuals.SlotBadge(Slot), Mode=OneWay}"
+                                                       FontSize="9" FontWeight="Bold"
+                                                       Foreground="White" />
+                                        </Border>
+                                        <Grid.ContextFlyout>
+                                            <MenuFlyout>
+                                                <MenuFlyoutItem Text="Go to Bookmark" Click="BookmarkMenu_Open_Click" />
+                                                <MenuFlyoutItem Text="Reveal in Explorer" Click="BookmarkMenu_Reveal_Click" />
+                                                <MenuFlyoutSeparator />
+                                                <MenuFlyoutItem Text="Move Up" Click="BookmarkMenu_MoveUp_Click" />
+                                                <MenuFlyoutItem Text="Move Down" Click="BookmarkMenu_MoveDown_Click" />
+                                                <MenuFlyoutItem Text="Move to Top" Click="BookmarkMenu_MoveTop_Click" />
+                                                <MenuFlyoutItem Text="Move to Bottom" Click="BookmarkMenu_MoveBottom_Click" />
+                                                <MenuFlyoutSeparator />
+                                                <MenuFlyoutItem Text="Remove Bookmark" Click="BookmarkMenu_Remove_Click" />
+                                            </MenuFlyout>
+                                        </Grid.ContextFlyout>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
